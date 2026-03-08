@@ -1,5 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>aeonscry | Projects</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial; margin: 40px; }
+    h1 { margin-bottom: 30px; }
+    .repo { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ddd; }
+    .repo a { text-decoration: none; margin-right: 10px; }
+    .repo a:hover { text-decoration: underline; }
+    .meta { color: #666; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<h1>aeonscry Projects</h1>
+<div id="repos">Loading repositories...</div>
+
 <script>
-const username = "aeonscry"; // change this
+const username = "aeonscry";
 
 async function fetchAllRepos(user) {
   let page = 1;
@@ -7,6 +27,7 @@ async function fetchAllRepos(user) {
   while (true) {
     const url = `https://api.github.com/users/${user}/repos?per_page=100&page=${page}&sort=updated`;
     const res = await fetch(url);
+    if (!res.ok) throw new Error("GitHub API error");
     const data = await res.json();
     all = all.concat(data);
     if (data.length < 100) break;
@@ -19,27 +40,47 @@ function renderRepos(repos) {
   const container = document.getElementById("repos");
   container.innerHTML = "";
 
-  const filtered = repos.filter(r => !r.fork && !r.archived);
+  const filtered = repos
+    .filter(r => !r.fork)
+    .filter(r => !r.archived)
+    .sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   for (const r of filtered) {
+
     const pagesUrl = `https://${username}.github.io/${r.name}`;
 
     const div = document.createElement("div");
+    div.className = "repo";
+
     div.innerHTML = `
       <h3>${r.name}</h3>
-      <p>${r.description || ""}</p>
+      <div class="meta">
+        ${r.description || "No description"}
+        ${r.language ? " • " + r.language : ""}
+        • ⭐ ${r.stargazers_count}
+      </div>
+      <br>
       <a href="${r.html_url}" target="_blank">📦 GitHub Repo</a>
-      |
       <a href="${pagesUrl}" target="_blank">🌐 Live Page</a>
-      <hr/>
     `;
 
     container.appendChild(div);
   }
+
+  if (filtered.length === 0) {
+    container.innerHTML = "No public repositories found.";
+  }
 }
 
 (async () => {
-  const repos = await fetchAllRepos(username);
-  renderRepos(repos);
+  try {
+    const repos = await fetchAllRepos(username);
+    renderRepos(repos);
+  } catch (err) {
+    document.getElementById("repos").innerText = "Failed to load repositories.";
+  }
 })();
 </script>
+
+</body>
+</html>
