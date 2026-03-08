@@ -1,80 +1,45 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>My Repositories</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
-    .repo { padding: 12px 0; border-bottom: 1px solid #eee; }
-    .name { font-weight: 700; }
-    .meta { color: #666; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <h1>My GitHub Repositories</h1>
-  <p id="status">Loading…</p>
-  <div id="repos"></div>
+<script>
+const username = "aeonscry"; // change this
 
-  <script>
-    const username = "aeonscry"; // <-- change this
+async function fetchAllRepos(user) {
+  let page = 1;
+  let all = [];
+  while (true) {
+    const url = `https://api.github.com/users/${user}/repos?per_page=100&page=${page}&sort=updated`;
+    const res = await fetch(url);
+    const data = await res.json();
+    all = all.concat(data);
+    if (data.length < 100) break;
+    page++;
+  }
+  return all;
+}
 
-    async function fetchAllRepos(user) {
-      let page = 1;
-      let all = [];
-      while (true) {
-        const url = `https://api.github.com/users/${user}/repos?per_page=100&page=${page}&sort=updated`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
-        const data = await res.json();
-        all = all.concat(data);
-        if (data.length < 100) break;
-        page++;
-      }
-      return all;
-    }
+function renderRepos(repos) {
+  const container = document.getElementById("repos");
+  container.innerHTML = "";
 
-    function renderRepos(repos) {
-      const container = document.getElementById("repos");
-      container.innerHTML = "";
+  const filtered = repos.filter(r => !r.fork && !r.archived);
 
-      // optional filters:
-      const filtered = repos
-        .filter(r => !r.fork)          // hide forks
-        .filter(r => !r.archived);     // hide archived
+  for (const r of filtered) {
+    const pagesUrl = `https://${username}.github.io/${r.name}`;
 
-      if (filtered.length === 0) {
-        container.innerHTML = "<p>No repos found.</p>";
-        return;
-      }
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <h3>${r.name}</h3>
+      <p>${r.description || ""}</p>
+      <a href="${r.html_url}" target="_blank">📦 GitHub Repo</a>
+      |
+      <a href="${pagesUrl}" target="_blank">🌐 Live Page</a>
+      <hr/>
+    `;
 
-      for (const r of filtered) {
-        const div = document.createElement("div");
-        div.className = "repo";
-        div.innerHTML = `
-          <div class="name"><a href="${r.html_url}" target="_blank" rel="noreferrer">${r.name}</a></div>
-          <div class="meta">
-            ${r.description ? r.description : ""}
-            ${r.language ? ` • ${r.language}` : ""}
-            • ⭐ ${r.stargazers_count}
-            • Updated ${new Date(r.updated_at).toLocaleDateString()}
-          </div>
-        `;
-        container.appendChild(div);
-      }
-    }
+    container.appendChild(div);
+  }
+}
 
-    (async () => {
-      const status = document.getElementById("status");
-      try {
-        const repos = await fetchAllRepos(username);
-        status.textContent = `Showing ${repos.length} repos (filtered on page).`;
-        renderRepos(repos);
-      } catch (e) {
-        status.textContent = "Failed to load repos.";
-        console.error(e);
-      }
-    })();
-  </script>
-</body>
-</html>
+(async () => {
+  const repos = await fetchAllRepos(username);
+  renderRepos(repos);
+})();
+</script>
